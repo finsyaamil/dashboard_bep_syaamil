@@ -410,6 +410,16 @@ table.pivot tr.sub:hover td{background:var(--panel)}
 #colsim-table td.n span{font-variant-numeric:tabular-nums}
 #colsim-bep-btn:hover{background:#FFF3E6 !important}
 #colsim-table tbody tr.colsim-hl td{background:#FFF7CC}
+.colsim-bep{display:grid; grid-template-columns:minmax(0,1.7fr) minmax(0,1fr); gap:20px; margin:12px 0 6px; padding:14px 16px; border:1px solid var(--line2); border-radius:10px; background:#fff}
+.colsim-bep-title{font-family:var(--f-mono); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink3); margin-bottom:6px}
+.colsim-bep-list{max-height:310px; overflow-y:auto}
+.colsim-bep-row{display:flex; justify-content:space-between; gap:10px; align-items:baseline; padding:6px 9px; border-radius:6px; cursor:pointer; font-size:11.5px; border:1px solid transparent; font-variant-numeric:tabular-nums}
+.colsim-bep-row:hover{background:#F8FAFC}
+.colsim-bep-row.sel{background:#FFF7CC; border-color:#E9D77A}
+.colsim-bep-row .pos{color:#15803D; font-weight:600}
+.colsim-bep-row .neg{color:#B91C1C; font-weight:600}
+@media (max-width:900px){.colsim-bep{grid-template-columns:1fr}}
+#colsim-table input:disabled{background:#F3F4F6; color:#9CA3AF; cursor:not-allowed}
 /* border pemisah antar entitas */
 #colsim-table tbody td:nth-child(even):nth-child(n+4){border-left:2px solid #B8C4D6}
 #colsim-table thead tr:first-child th:nth-child(n+4){border-left:2px solid #B8C4D6}
@@ -434,6 +444,10 @@ table.pivot tr.sub:hover td{background:var(--panel)}
 <section class="slide driver-slide active" id="slide-16"><button aria-label="Export PDF" class="slide-pdf-btn" onclick="window.print()">💾 PDF</button>
 <div class="s-kicker">SIMULASI</div>
 <h2 class="s-title">Simulasi: <span class="hl">Pilih Entitas per Kolom</span></h2>
+<div class="colsim-bep">
+<div><div class="colsim-bep-title" id="colsim-bep-title"></div><div id="colsim-bep-svgwrap"></div></div>
+<div><div class="colsim-bep-title">BEP per entitas &middot; klik untuk melihat chart</div><div id="colsim-bep-list" class="colsim-bep-list"></div></div>
+</div>
 <ul class="colsim-points">
 <li>Pilih entitas langsung di header tabel &mdash; minimal 1, maksimal 12 (6 Commercial Group + SMI, SEG, MAC, VSM, VMU, KKC).</li>
 <li><strong>Gross Revenue</strong>, Discount, COGS, dan Marketing Variable diatur langsung di tabel. Revenue default Mei 2026; rasio variabel Commercial Group memakai persentase dari file Syaamil Group terbaru (kolom %), entitas lain memakai data terbaru yang tersedia; tidak ikut dropdown.</li>
@@ -768,7 +782,7 @@ function colSimDetailRows(category) {
     colSimEntities.forEach((e, idx) => {
       const accDict = colSimAccDetailDict(e);
       if (!accDict || !accDict[category] || !(itemName in accDict[category])) {
-        cells += `<td class="n"><span class="acc-blank">n/a</span></td><td class="n acc-blank">&mdash;</td>`;
+        cells += `<td class="n"><span>${simFmtRp(0)}</span></td><td class="n">${colSimReduceInputHtml(idx, category, itemName, 0).replace('<input', '<input disabled')}</td>`;
         return;
       }
       const m = colSimIsChain(e) ? SMI_PROD_MODEL[e] : SIM_MODEL[e];
@@ -816,7 +830,7 @@ function colSimDetail3Rows(category) {
         const reduceMap = colSimReduceArr[idx][category];
         const leafKey = a2item + '|' + item3;
         const leaf = colSimLeaves(e, category).find(l => l.key === leafKey);
-        if (!leaf) { cells += `<td class="n"><span class="acc-blank">n/a</span></td><td class="n acc-blank">&mdash;</td>`; return; }
+        if (!leaf) { cells += `<td class="n"><span>${simFmtRp(0)}</span></td><td class="n">${colSimReduceInputHtml(idx, category, leafKey, 0).replace('<input', '<input disabled')}</td>`; return; }
         const amt = (reduceMap && reduceMap[leafKey]) || 0;
         const v = Math.max(0, leaf.ratio * modelTotal - amt);
         totalV += v;
@@ -968,6 +982,7 @@ function colSimRenderTable() {
     const zm = parseFloat(getComputedStyle(document.getElementById('slide-16')).zoom) || 1;
     document.getElementById('colsim-table').style.setProperty('--h1', (hr.getBoundingClientRect().height / zm).toFixed(2) + 'px');
   }
+  colSimRenderBepChart();
 }
 function colSimBepRevenue(idx) {
   const e = colSimEntities[idx];
@@ -979,9 +994,9 @@ function colSimBepRevenue(idx) {
   const variablePct = (r.discountPct || 0) + (r.cogsPct || 0) + (r.mktVarPemasaranPct || 0) + (r.mktVarKirimPct || 0) + (r.mktVarBonusPct || 0);
   const rate = 1 - variablePct / 100;
   const fixedNeed = mk + ox + mg - m.totalOthers + m.da;
-  if (fixedNeed <= 0) return {ok: true, rev: 0};
-  if (rate <= 0) return {ok: false};
-  return {ok: true, rev: fixedNeed / rate};
+  if (fixedNeed <= 0) return {ok: true, rev: 0, rate: rate, fixedNeed: fixedNeed};
+  if (rate <= 0) return {ok: false, rate: rate, fixedNeed: fixedNeed};
+  return {ok: true, rev: fixedNeed / rate, rate: rate, fixedNeed: fixedNeed};
 }
 function colSimBepClick() {
   if (colSimRenderDebounceTimer) clearTimeout(colSimRenderDebounceTimer);
@@ -990,6 +1005,68 @@ function colSimBepClick() {
     if (b.ok) colSimRevArr[idx] = Math.round(b.rev);
   });
   colSimRenderTable();
+}
+
+let colSimBepSel = null;
+function colSimBepSelect(ent) { colSimBepSel = ent; colSimRenderBepChart(); }
+function colSimRenderBepChart() {
+  const listEl = document.getElementById('colsim-bep-list');
+  const wrap = document.getElementById('colsim-bep-svgwrap');
+  const titleEl = document.getElementById('colsim-bep-title');
+  if (!listEl || !wrap) return;
+  if (!colSimBepSel || colSimEntities.indexOf(colSimBepSel) < 0) colSimBepSel = colSimEntities[0];
+  const pctTxt = function(v) { const r = Math.round(v * 10) / 10; return (r > 0 ? '+' : (r < 0 ? '\u2212' : '')) + Math.abs(r).toFixed(1).replace('.', ',') + '%'; };
+  let list = '';
+  colSimEntities.forEach(function(e, idx) {
+    const b = colSimBepRevenue(idx), cur = colSimRevArr[idx];
+    let right;
+    if (!b.ok) right = '<span class="neg">BEP tidak tercapai</span>';
+    else {
+      const gap = cur > 0 ? (b.rev / cur - 1) * 100 : 0;
+      right = simFmtRp(b.rev) + ' <span class="' + (gap > 0.05 ? 'neg' : 'pos') + '">' + (cur > 0 ? pctTxt(gap) : '') + '</span>';
+    }
+    list += '<div class="colsim-bep-row' + (e === colSimBepSel ? ' sel' : '') + '" onclick="colSimBepSelect(\'' + e + '\')"><b>' + e + '</b><span>' + right + '</span></div>';
+  });
+  listEl.innerHTML = list;
+
+  const idx = colSimEntities.indexOf(colSimBepSel), b = colSimBepRevenue(idx), cur = colSimRevArr[idx];
+  if (titleEl) titleEl.textContent = 'Chart BEP \u2014 ' + colSimBepSel + ' (Gross Revenue vs Total Biaya)';
+  if (!b.ok) { wrap.innerHTML = '<div style="padding:40px 10px; font-size:12px; color:var(--ink3)">BEP tidak tercapai: discount + COGS + biaya variabel \u2265 100% dari revenue.</div>'; return; }
+  const W = 660, H = 300, L = 128, R = 18, T = 20, B = 40, PW = W - L - R, PH = H - T - B;
+  const xMax = Math.max(cur, b.rev, 1) * 1.4;
+  const costAt = function(x) { return x * (1 - b.rate) + b.fixedNeed; };
+  const yMax = Math.max(xMax, costAt(xMax), 1) * 1.05;
+  const sx = function(x) { return L + x / xMax * PW; }, sy = function(y) { return T + PH - y / yMax * PH; };
+  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block; font-family:var(--f-mono)">';
+  for (let i = 0; i <= 4; i++) {
+    const yv = yMax / 1.05 * i / 4, xv = xMax * i / 4;
+    s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + sy(yv) + '" y2="' + sy(yv) + '" stroke="#E5E7EB" stroke-width="1"/>';
+    s += '<text x="' + (L - 6) + '" y="' + (sy(yv) + 3) + '" font-size="9" fill="#6B7280" text-anchor="end">' + simFmtRp(yv) + '</text>';
+    s += '<text x="' + sx(xv) + '" y="' + (H - B + 14) + '" font-size="9" fill="#6B7280" text-anchor="' + (i === 0 ? 'start' : (i === 4 ? 'end' : 'middle')) + '">' + simFmtRp(xv) + '</text>';
+  }
+  if (b.rev > 0) {
+    s += '<polygon points="' + sx(0) + ',' + sy(0) + ' ' + sx(0) + ',' + sy(costAt(0)) + ' ' + sx(b.rev) + ',' + sy(b.rev) + '" fill="rgba(220,38,38,.12)"/>';
+    s += '<polygon points="' + sx(b.rev) + ',' + sy(b.rev) + ' ' + sx(xMax) + ',' + sy(costAt(xMax)) + ' ' + sx(xMax) + ',' + sy(xMax) + '" fill="rgba(22,163,74,.14)"/>';
+    s += '<text x="' + (sx(b.rev * 0.38)) + '" y="' + (sy(b.rev * 0.38 + b.fixedNeed * 0.35) - 4) + '" font-size="10" fill="#B91C1C" text-anchor="middle">RUGI</text>';
+    s += '<text x="' + (sx(b.rev + (xMax - b.rev) * 0.62)) + '" y="' + (sy(b.rev + (xMax - b.rev) * 0.62) + 16) + '" font-size="10" fill="#15803D" text-anchor="middle">LABA</text>';
+  }
+  s += '<line x1="' + sx(0) + '" y1="' + sy(0) + '" x2="' + sx(xMax) + '" y2="' + sy(xMax) + '" stroke="#1D4ED8" stroke-width="2"/>';
+  s += '<line x1="' + sx(0) + '" y1="' + sy(costAt(0)) + '" x2="' + sx(xMax) + '" y2="' + sy(costAt(xMax)) + '" stroke="#EA580C" stroke-width="2"/>';
+  s += '<line x1="' + sx(0) + '" y1="' + sy(b.fixedNeed) + '" x2="' + sx(xMax) + '" y2="' + sy(b.fixedNeed) + '" stroke="#EA580C" stroke-width="1" stroke-dasharray="2 3" opacity=".55"/>';
+  // current revenue marker
+  s += '<line x1="' + sx(cur) + '" x2="' + sx(cur) + '" y1="' + sy(0) + '" y2="' + sy(cur) + '" stroke="#6B7280" stroke-width="1.2" stroke-dasharray="4 3"/>';
+  s += '<circle cx="' + sx(cur) + '" cy="' + sy(cur) + '" r="4" fill="#6B7280"/>';
+  const nearRight = sx(cur) > L + PW * 0.62;
+  s += '<text x="' + (sx(cur) + (nearRight ? -6 : 6)) + '" y="' + (sy(0) - 6) + '" font-size="9.5" fill="#374151" text-anchor="' + (nearRight ? 'end' : 'start') + '">Saat ini ' + simFmtRp(cur) + '</text>';
+  // BEP marker
+  s += '<line x1="' + sx(b.rev) + '" x2="' + sx(b.rev) + '" y1="' + sy(0) + '" y2="' + sy(b.rev) + '" stroke="#B45309" stroke-width="1.4" stroke-dasharray="5 3"/>';
+  s += '<circle cx="' + sx(b.rev) + '" cy="' + sy(b.rev) + '" r="5.5" fill="#FACC15" stroke="#B45309" stroke-width="1.5"/>';
+  s += '<text x="' + (sx(b.rev) - 10) + '" y="' + (sy(b.rev) - 12) + '" font-size="10.5" font-weight="700" fill="#92400E" text-anchor="end">BEP ' + simFmtRp(b.rev) + '</text>';
+  // legend
+  s += '<line x1="' + (L + 8) + '" x2="' + (L + 28) + '" y1="' + (T + 6) + '" y2="' + (T + 6) + '" stroke="#1D4ED8" stroke-width="2"/><text x="' + (L + 33) + '" y="' + (T + 9) + '" font-size="9.5" fill="#374151">Gross Revenue</text>';
+  s += '<line x1="' + (L + 125) + '" x2="' + (L + 145) + '" y1="' + (T + 6) + '" y2="' + (T + 6) + '" stroke="#EA580C" stroke-width="2"/><text x="' + (L + 150) + '" y="' + (T + 9) + '" font-size="9.5" fill="#374151">Total biaya (variabel + fix cost)</text>';
+  s += '</svg>';
+  wrap.innerHTML = s;
 }
 window.SIM_CHAIN_RESULTS = {"SMI": {"revenue": 3471785185.456001}, "SEG": {"revenue": 2447263190.8496656}, "MAC": {"revenue": 733925455.5844587}};
 colSimRenderTable();
