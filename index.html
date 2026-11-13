@@ -458,12 +458,14 @@ table.pivot tr.sub:hover td{background:var(--panel)}
 <li>Bulan fix cost dipilih di dropdown (default September) dan hanya memengaruhi fix cost: Marketing Fixed, Opex non-gaji, Other Income/(Expense), D&amp;A, Dana Taktis. VSM/VMU maks. Juli, KKC maks. Juni; SMI, SEG, MAC tetap Mei 2026.</li>
 <li>Gaji = CEK Netto + PPh21 + Tunai, digabung ke Opex (Gaji Marketing = 0); VSM/VMU memakai gaji dari file P&amp;L.</li>
 <li>Fee Management = VSS + VISITAMA + VISITAMA 2 + SEA Holding.</li>
-<li>Biaya Operasional Holding = VSM + VMU.</li>
+<li>Biaya Operasional Holding: pilih data upload (VSM + VMU) atau historis P&amp;L per bulan fix cost (dropdown). SMI, SEG, MAC historisnya hanya Mei.</li>
 <li>Dana Taktis mengikuti data bulanan dari tabel Anda (juga untuk SMI, SEG, MAC); baris SEA dipakai untuk SMA, MEDIAQU untuk MAC, dan KKC tetap KKC. Khusus SMA: Dana Taktis di-take out dan Other Expense dikurangi Rp52 jt.</li>
 </ul>
 <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:12px">
 <span class="card__label" style="margin-top:0">Bulan fix cost</span>
 <select id="colsim-month" onchange="colSimMonthChange(this.value)" style="padding:5px 10px; border:1px solid var(--line2); border-radius:6px; font-family:var(--f-mono); font-size:11px"><option value="0">Jan 2026</option><option value="1">Feb 2026</option><option value="2">Mar 2026</option><option value="3">Apr 2026</option><option value="4">Mei 2026</option><option value="5">Jun 2026</option><option value="6">Jul 2026</option><option value="7">Agu 2026</option><option value="8" selected>Sep 2026</option></select>
+<span class="card__label" style="margin-top:0; margin-left:14px">Biaya Ops Holding</span>
+<select id="colsim-boh" onchange="colSimBohChange(this.value)" style="padding:5px 10px; border:1px solid var(--line2); border-radius:6px; font-family:var(--f-mono); font-size:11px"><option value="upload" selected>Data upload (VSM + VMU)</option><option value="hist">Historis P&amp;L per bulan</option></select>
 </div>
 <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px">
 <button class="back-link" id="colsim-bep-btn" onclick="colSimBepClick()" style="cursor:pointer; border:1px solid var(--orangeDeep); color:var(--orangeDeep); flex:1; min-width:130px; text-align:center">🎯 Gross Revenue BEP (EBIT = 0)</button>
@@ -617,6 +619,35 @@ function colSimApplyDanaTaktis(mi) {
     model.managementCost = Object.values(a2.mgmt).reduce(function(s, x) { return s + x; }, 0);
   });
 }
+const BOH_DATA = {"upload": {"SMA": 16559560.0, "SDQ": 15529910.0, "SAA": 16638264.0, "SDI": 16071014.0, "SKI": 8244505.0, "MRM": 13206587.0, "SMI": 21483292.0, "SEG": 23711367.0, "MAC": 17298704.0, "KKC": 10115735.0}, "hist": {"SMA": [0.0, 22352053.0, 32717809.0, 39475781.0, 22194561.0, 38594988.0, 28112421.0, 25645767.0, 16609209.0], "SDQ": [0.0, 15132870.0, 24825942.0, 32365924.0, 16841008.0, 29285486.0, 26118048.0, 23653660.0, 15513237.0], "SAA": [0.0, 18020543.0, 29052772.0, 36198017.0, 19726482.0, 34303148.0, 31555337.0, 29084774.0, 18501205.0], "SDI": [0.0, 19464379.0, 28490979.0, 35667790.0, 19327234.0, 33608882.0, 24795465.0, 22332557.0, 14786433.0], "SKI": [0.0, 10454108.0, 15302197.0, 28175409.0, 14763298.0, 22389510.0, 18869405.0, 16211526.0, 13028897.0], "MRM": [0.0, 27761871.0, 41599504.0, 47477384.0, 28219577.0, 63445122.0, 24585530.0, 25172882.0, 14671067.0], "KKC": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "SMI": 27566262.0, "SEG": 31837700.0, "MAC": 0.0}};
+let colSimBohSrc = 'upload';
+function colSimApplyBoh(mi) {
+  Object.keys(BOH_DATA.upload).forEach(function(ent) {
+    const chain = (ent === 'SMI' || ent === 'SEG' || ent === 'MAC');
+    let v;
+    if (colSimBohSrc === 'upload') v = BOH_DATA.upload[ent];
+    else { const hh = BOH_DATA.hist[ent]; v = Array.isArray(hh) ? hh[Math.min(mi, hh.length - 1)] : hh; }
+    const model = chain ? SMI_PROD_MODEL[ent] : SIM_MODEL[ent];
+    const a2 = (chain ? SMI_PROD_ACC_DETAIL : COMM_ACC_DETAIL)[ent];
+    const a3 = (chain ? SMI_PROD_ACC3_DETAIL : COMM_ACC3_DETAIL)[ent];
+    a2.mgmt['Biaya Operasional Holding'] = v;
+    if (v) a3['Biaya Operasional Holding'] = {'Management Cost': v}; else delete a3['Biaya Operasional Holding'];
+    model.managementCost = Object.values(a2.mgmt).reduce(function(s, x) { return s + x; }, 0);
+  });
+}
+function colSimBohLabel(ent) {
+  if (!BOH_DATA.upload[ent]) return '';
+  if (colSimBohSrc === 'upload') return 'Ops Holding: data upload';
+  const hh = BOH_DATA.hist[ent];
+  if (!Array.isArray(hh)) return 'Ops Holding: historis Mei 2026';
+  const eff = Math.min(colSimMonth, hh.length - 1);
+  return 'Ops Holding: historis ' + MONTH_DATA.months[eff] + ' 2026' + (eff < colSimMonth ? ' (terbaru)' : '');
+}
+function colSimBohChange(v) {
+  colSimBohSrc = v;
+  colSimApplyMonthData(colSimMonth);
+  colSimReset();
+}
 function colSimApplyMonthData(mi) {
   Object.keys(MONTH_DATA.entities).forEach(function(ent) {
     const src = MONTH_DATA.entities[ent];
@@ -627,13 +658,14 @@ function colSimApplyMonthData(mi) {
     COMM_ACC_DETAIL[ent] = JSON.parse(JSON.stringify(d.acc2));
     COMM_ACC3_DETAIL[ent] = JSON.parse(JSON.stringify(d.acc3));
   });
+  colSimApplyBoh(mi);
   colSimApplyDanaTaktis(mi);
 }
 function colSimBasisLabel(ent) {
   const src = MONTH_DATA.entities[ent];
-  if (!src) return 'Fix cost: Mei 2026<br>Rasio: Mei 2026';
+  if (!src) return 'Fix cost: Mei 2026<br>Rasio: Mei 2026' + (colSimBohLabel(ent) ? '<br>' + colSimBohLabel(ent) : '');
   const eff = Math.min(colSimMonth, src.last);
-  return 'Fix cost: ' + MONTH_DATA.months[eff] + ' 2026' + (eff < colSimMonth ? ' (terbaru)' : '') + '<br>Rasio: ' + (src.rateSrc === 'file' ? 'update terbaru (s.d. Sep 2026)' : MONTH_DATA.months[src.last] + ' 2026 (terbaru)');
+  return 'Fix cost: ' + MONTH_DATA.months[eff] + ' 2026' + (eff < colSimMonth ? ' (terbaru)' : '') + '<br>Rasio: ' + (src.rateSrc === 'file' ? 'update terbaru (s.d. Sep 2026)' : MONTH_DATA.months[src.last] + ' 2026 (terbaru)') + (colSimBohLabel(ent) ? '<br>' + colSimBohLabel(ent) : '');
 }
 function colSimMonthChange(v) {
   colSimMonth = parseInt(v, 10);
