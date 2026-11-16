@@ -422,9 +422,9 @@ table.pivot tr.sub:hover td{background:var(--panel)}
 #colsim-table input.colsim-add{background:#F0FDF4; border-color:#86EFAC !important}
 #colsim-table input:disabled{background:#F3F4F6; color:#9CA3AF; cursor:not-allowed}
 /* border pemisah antar entitas */
-#colsim-table tbody td:nth-child(even):nth-child(n+4){border-left:2px solid #B8C4D6}
+#colsim-table tbody td:nth-child(3n+4){border-left:2px solid #B8C4D6}
 #colsim-table thead tr:first-child th:nth-child(n+4){border-left:2px solid #B8C4D6}
-#colsim-table thead tr:nth-child(2) th:nth-child(odd){border-left:2px solid #B8C4D6}
+#colsim-table thead tr:nth-child(2) th:nth-child(3n+1){border-left:2px solid #B8C4D6}
 .colsim-basis{font-size:9px; font-weight:400; color:var(--ink3); text-transform:none; letter-spacing:.02em; margin-top:3px; text-align:center}
 .colsim-points{list-style:none; margin:10px 0 0; padding:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); grid-template-rows:repeat(5,auto); grid-auto-flow:column; gap:5px 36px; font-size:12px; line-height:1.45; color:var(--ink2); max-width:100%}
 .colsim-points li{position:relative; padding-left:14px}
@@ -440,6 +440,7 @@ table.pivot tr.sub:hover td{background:var(--panel)}
 #colsim-table thead tr:first-child th:nth-child(-n+3){z-index:6}
 </style>
 <style id="theme-syaamil">
+#colsim-table td.pct{color:var(--muted); font-size:10.5px; min-width:58px}
 /* ===== Tema Syaamil Group (Cash Projection) ===== */
 :root{
   --bg:#f2f5f9; --surface:#fff; --surface2:#f6f8fb; --ink:#1e293b; --muted:#6b7a8c; --line:#e6ebf2;
@@ -518,9 +519,9 @@ select:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid 
 #colsim-table tbody td:nth-child(-n+3){background:var(--surface)}
 #colsim-table tbody tr.colsim-hl td:nth-child(-n+3){background:var(--hl) !important}
 #colsim-table tr.is-total td{background:var(--surface2); border-top:1px solid var(--muted)}
-#colsim-table tbody td:nth-child(even):nth-child(n+4),
+#colsim-table tbody td:nth-child(3n+4),
 #colsim-table thead tr:first-child th:nth-child(n+4),
-#colsim-table thead tr:nth-child(2) th:nth-child(odd){border-left:1.5px solid var(--sep)}
+#colsim-table thead tr:nth-child(2) th:nth-child(3n+1){border-left:1.5px solid var(--sep)}
 #colsim-table tbody td:nth-child(3){border-right:1.5px solid var(--sep)}
 #colsim-table input.colsim-add{background:#eaf6ef; border-color:#86d1ac !important; border-radius:6px}
 #colsim-table input:disabled{background:var(--surface2); color:var(--muted)}
@@ -549,7 +550,7 @@ tr.cf-detail-acc2 td,tr.cf-detail-acc3 td{background:var(--goodBg) !important}
   <div class="ttl"><h1>Simulasi Kolom Entitas Kustom</h1><div class="sub">Laba rugi per entitas &middot; BEP (EBIT = 0) &middot; fix cost berdasarkan bulan pilihan</div></div>
   <div class="controls">
     <label>Bulan fix cost<select id="colsim-month" onchange="colSimMonthChange(this.value)"><option value="0">Jan 2026</option><option value="1">Feb 2026</option><option value="2">Mar 2026</option><option value="3">Apr 2026</option><option value="4">Mei 2026</option><option value="5">Jun 2026</option><option value="6">Jul 2026</option><option value="7">Agu 2026</option><option value="8" selected>Sep 2026</option></select></label>
-    <label>Biaya Ops Holding<select id="colsim-boh" onchange="colSimBohChange(this.value)"><option value="upload" selected>Data upload (VSM + VMU)</option><option value="hist">Historis P&amp;L per bulan</option></select></label>
+    <label>Biaya Ops Holding<select id="colsim-boh" onchange="colSimBohChange(this.value)"><option value="upload">Data upload (VSM + VMU)</option><option value="hist" selected>Historis P&amp;L per bulan</option></select></label>
   </div>
 </header>
 <div class="deck" id="deck">
@@ -725,7 +726,7 @@ function colSimApplyDanaTaktis(mi) {
   });
 }
 const BOH_DATA = {"upload": {"SMA": 16559560.0, "SDQ": 15529910.0, "SAA": 16638264.0, "SDI": 16071014.0, "SKI": 8244505.0, "MRM": 13206587.0, "SMI": 21483292.0, "SEG": 23711367.0, "MAC": 17298704.0, "KKC": 10115735.0}, "hist": {"SMA": [0.0, 22352053.0, 32717809.0, 39475781.0, 22194561.0, 38594988.0, 28112421.0, 25645767.0, 16609209.0], "SDQ": [0.0, 15132870.0, 24825942.0, 32365924.0, 16841008.0, 29285486.0, 26118048.0, 23653660.0, 15513237.0], "SAA": [0.0, 18020543.0, 29052772.0, 36198017.0, 19726482.0, 34303148.0, 31555337.0, 29084774.0, 18501205.0], "SDI": [0.0, 19464379.0, 28490979.0, 35667790.0, 19327234.0, 33608882.0, 24795465.0, 22332557.0, 14786433.0], "SKI": [0.0, 10454108.0, 15302197.0, 28175409.0, 14763298.0, 22389510.0, 18869405.0, 16211526.0, 13028897.0], "MRM": [0.0, 27761871.0, 41599504.0, 47477384.0, 28219577.0, 63445122.0, 24585530.0, 25172882.0, 14671067.0], "KKC": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "SMI": 27566262.0, "SEG": 31837700.0, "MAC": 0.0}};
-let colSimBohSrc = 'upload';
+let colSimBohSrc = 'hist';
 function colSimApplyBoh(mi) {
   Object.keys(BOH_DATA.upload).forEach(function(ent) {
     const chain = (ent === 'SMI' || ent === 'SEG' || ent === 'MAC');
@@ -1043,9 +1044,9 @@ function colSimRenderTable() {
   const tbody = document.getElementById('colsim-tbody');
   if (!thead || !tbody) return;
   colSimUpdateAddBtn();
-  const entityHeaderRow = colSimEntities.map((e, idx) => `<th colspan="2" class="n">${colSimEntityHeaderHtml(idx, e)}</th>`).join('');
-  const subHeaderRow = colSimEntities.map(() => '<th class="n">Nilai</th><th class="n">Penyesuaian</th>').join('');
-  thead.innerHTML = `<tr><th rowspan="2">Account1</th><th rowspan="2">Account2</th><th rowspan="2">Account3</th>${entityHeaderRow}<th rowspan="2" class="n">Total</th></tr><tr>${subHeaderRow}</tr>`;
+  const entityHeaderRow = colSimEntities.map((e, idx) => `<th colspan="3" class="n">${colSimEntityHeaderHtml(idx, e)}</th>`).join('');
+  const subHeaderRow = colSimEntities.map(() => '<th class="n">Nilai</th><th class="n">Penyesuaian</th><th class="n">% Bruto</th>').join('') + '<th class="n">Nilai</th><th class="n">% Bruto</th>';
+  thead.innerHTML = `<tr><th rowspan="2">Account1</th><th rowspan="2">Account2</th><th rowspan="2">Account3</th>${entityHeaderRow}<th colspan="2" class="n">Total</th></tr><tr>${subHeaderRow}</tr>`;
 
   const resultsByIdx = colSimEntities.map((e, idx) => {
     const m = colSimIsChain(e) ? SMI_PROD_MODEL[e] : SIM_MODEL[e];
@@ -1118,6 +1119,38 @@ function colSimRenderTable() {
   rows += row('Tax', 'tax');
   rows += row('EAT (Net Profit)', 'eat', {bold:true, colorByValue:true, isTotal:true});
   tbody.innerHTML = rows;
+  // kolom rasio terhadap Gross Revenue (% Bruto)
+  (function colSimAddPctCols() {
+    const N = colSimEntities.length;
+    const parseRp = function(td) {
+      const t = (td.textContent || '').trim();
+      if (!/\d/.test(t)) return null;
+      const d = parseFloat(t.replace(/\D/g, ''));
+      return /^[\u2212-]/.test(t) ? -d : d;
+    };
+    const fmtPct = function(v, den) {
+      if (v === null || !den) return '&mdash;';
+      const x = v / den * 100;
+      const s = (Math.abs(x) < 0.05 ? 0 : x).toLocaleString('id-ID', {minimumFractionDigits:1, maximumFractionDigits:1});
+      return s.replace('-', '\u2212') + '%';
+    };
+    Array.from(tbody.rows).forEach(function(tr) {
+      const c = Array.from(tr.cells);
+      const mk = function(v, den) {
+        const td = document.createElement('td');
+        td.className = 'n pct' + (v === null || !den ? ' acc-blank' : '');
+        td.innerHTML = fmtPct(v, den);
+        return td;
+      };
+      const tot = mk(parseRp(c[3 + 2 * N]), totals.gr);
+      tr.appendChild(tot);
+      for (let i = N - 1; i >= 0; i--) {
+        const nilai = c[3 + 2 * i];
+        const pen = c[4 + 2 * i];
+        pen.after(mk(nilai ? parseRp(nilai) : null, resultsByIdx[i].gr));
+      }
+    });
+  })();
   const hr = thead.rows[0];
   if (hr) {
     const zm = parseFloat(getComputedStyle(document.getElementById('slide-16')).zoom) || 1;
